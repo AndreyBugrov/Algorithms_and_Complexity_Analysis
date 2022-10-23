@@ -3,6 +3,7 @@
 #include <ctime>
 #include <vector>
 #include <list>
+#include <string>
 using namespace std;
 
 ///
@@ -37,11 +38,6 @@ class Graph
     size_t _size;
     std::list<ADJ>::iterator vicinity_it; // Итератор по окрестности вершины
     size_t pointer; // указатель на номер вершины
-    void create_it()
-    {
-        vicinity_it = graph[0].begin();
-        pointer = 0;
-    }
 public:
     Graph(int** weights, size_t size): _size(size)
     {
@@ -55,9 +51,16 @@ public:
                     tmp.push_back(ADJ{ j,weights[i][j] });
                 }
             }
+           /* if(!tmp.empty()){
+                graph[i] = tmp;
+            }*/
             graph[i] = tmp;
         }
-        create_it();
+        start_explore_vicinity(0);
+    }
+    ~Graph()
+    {
+        delete[] graph;
     }
     size_t size() const
     {
@@ -74,7 +77,10 @@ public:
     }
     ADJ* get_ADJ()
     {
-        if (vicinity_it == graph->end()) {
+        if (graph[pointer].empty()) {
+            return nullptr;
+        }
+        if (vicinity_it == graph[0].end()) {
             return nullptr;
         }
         else
@@ -98,18 +104,15 @@ struct DHeapUnsafe
     int* name; // names of vertexes in graph
     int* key; // information connected with i-th name
     int* index; // indexes of objects in d-heap, index[name[i]=i
-    void create_queue(int* weights) // O(n)
+    void create_queue() // O(n)
     {
         for (int i = n - 1; i >= 0; i--) {
             diving(i);
         }
-        for (int i = 0; i < n; i++) {
-            weights[i] = key[i];
-        }
     }
 public:
-    //key is -1 if weight is inf and 0 if it is the vertex itself
-    DHeapUnsafe(size_t _n, size_t _d, int* _name, int* _key, int* _index) :n(_n), d(_d), name(_name), index(_index)
+    //key is k_inf if weight is inf and 0 if it is the vertex itself
+    DHeapUnsafe(size_t _n, size_t _d, int* _name, int* _key, int* _index) :n(_n), d(_d), name(_name), key(_key), index(_index)
     {
         /*name = new int[n];
         key = new int[n];
@@ -119,14 +122,15 @@ public:
             index[i] = i;
             name[i] = i;
         }*/
-        create_queue(_key);
+        create_queue();
     }
     // 
     void diving(int i) // in every iteration minchild - O(d), log d n iterations (hight of a heap)
     {
         // it works without swaps because after while we insert key0 and name0
         // we don't need to do such many swaps, only one and many assignments
-        int key0 = key[i], name0 = name[i], child = minchild(i);
+        int key0 = key[i], name0 = name[i];
+        int child = minchild(i);
         while (child != -1 && key0 > key[child]) {
             key[i] = key[child];
             name[i] = name[child];
@@ -178,7 +182,8 @@ public:
         }
         int right_child = rightchild(i);
         int min_child = left_child;
-        for (int j = left_child + 1; j < right_child; j++) {
+        // if the last element is left_child
+        for (int j = left_child + 1; j <= right_child; j++) {
             if (key[j] < key[min_child]) {
                 min_child = j;
             }
@@ -189,7 +194,7 @@ public:
     {
         int j = i * d + 1;
         if (j >= n) {
-            return k_inf; // leaf
+            return -1; // leaf
         }
         else {
             return j;
@@ -197,12 +202,12 @@ public:
     }
     int rightchild(int i) const // O(1)
     {
+        int j1 = i * d + 1;
         int j = (i + 1) * d;
-        if (j >= n) {
-            return k_inf; // leaf
+        if (j1 >= n) {
+            return -1; // leaf
         }
-        else
-            return j < (n - 1) ? j : (n - 1); // min does not work
+        return j < (n - 1) ? j : (n - 1); // min does not work
     }
     int parent(int i) const // O(1)
     {
@@ -225,12 +230,11 @@ public:
     }
 };
 
-void LDG_DIJKSTRA_D_HEAP(int* dist, int* up, Graph& graph, int n, int d, int s) // O(
+void LDG_DIJKSTRA_D_HEAP(int* dist, int* up, Graph& graph, size_t n, size_t d, int s) // O(
 {
     int* name = new int[n]; // names of vertexes in graph
     int* index = new int[n]; // numbers of vertexes in d-heap
     int* key = new int[n]; // weight of vertex in d-heap
-    // index[name[i]]:= i
     for (int i = 0; i < n; i++)
     {
         up[i] = k_inf;
@@ -254,6 +258,7 @@ void LDG_DIJKSTRA_D_HEAP(int* dist, int* up, Graph& graph, int n, int d, int s) 
             int delta = heap.key[jq] - (min_key + p->weight); // old estimate - (distance to min + edge between vertexes)
             if (delta > 0) {
                 heap.key[jq] -= delta;
+                dist[j] -= delta;
                 heap.emersion(jq); // because we reduced the key
                 up[j] = min_name;
             }
@@ -262,12 +267,67 @@ void LDG_DIJKSTRA_D_HEAP(int* dist, int* up, Graph& graph, int n, int d, int s) 
         }
     }
 }
+void create_graph(int n, int m, int q, int r, int** table)
+{
+    //    double q = m / (double(n) * n);
+    //    q *= 1000.0; // to know how many pro mile edges take in table
+    //    int q_int = int(q);
+    //    mt19937 weight(time(0));
+    //    mt19937 edge(time(0));
+    //    for (int i = 0; i < n; i++) {
+    //        for (int j = i+1; j < n; j++) { // j = i+1 because table[i][i] = 0 for any i
+    //
+    //        }
+    //    }
+    //}
+    table[0][0] = 0;
+    for (int j = 1; j < n; j++) {
+        table[0][j] = 100;
+    }
+    for (int i = 1; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            table[i][j] = 0;
+        }
+    }
+    for (int j = 0; j < n; j++) {
+        if (j != 2) {
+            table[2][j] = 1;
+        }
+    }
+}
 std::string hello_world()
 {
     return std::string("Hello, world!\n");
 }
-// get experiment number and
+// get n = vertex number, m = edges number, q = min weight, r = max weight
 int main(int argc,char* argv[]) 
 {
-    std::cout << hello_world();
+    int n, m, q, r;
+   /* n = stoi(argv[1]);
+    m = stoi(argv[2]);
+    q = stoi(argv[3]);
+    r = stoi(argv[4]);*/
+    n = 5;
+    m = 200;
+    q = 1;
+    r = 120;
+    int** table;
+    table = new int* [n];
+    for (int i = 0; i < n; i++) {
+        table[i] = new int[n];
+    }
+    int* up = new int[n];
+    int* dist = new int[n];
+    create_graph(n, m, q, r, table);
+    Graph g(table,n);
+    int d = 3, s = 0;
+    LDG_DIJKSTRA_D_HEAP(dist, up, g, n, d, s);
+   // std::cout << hello_world();
+    for (int i = 0; i < n; i++) {
+        cout << "dist[" << i << "] = " << dist[i] << "; ";
+    }
+    cout << "\n";
+    for (int i = 0; i < n; i++) {
+        cout << "up[" << i << "] = " << up[i] << "; ";
+    }
 }
