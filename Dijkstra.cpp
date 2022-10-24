@@ -77,10 +77,7 @@ public:
     }
     ADJ* get_ADJ()
     {
-        if (graph[pointer].empty()) {
-            return nullptr;
-        }
-        if (vicinity_it == graph[0].end()) {
+        if (vicinity_it == graph[pointer].end()) { // it is important to compare with end of current list
             return nullptr;
         }
         else
@@ -144,6 +141,7 @@ public:
         key[i] = key0; 
         name[i] = name0;
         index[name[i]] = i;
+        int tmp = key[i], tmp1 = name[i], tmp3 = index[name[i]];//////////////////////////////////////////////////////////////
     }
     // explanation is in diving
     void emersion(int i) // in every iteration parent - 0(1), log d n iterations (hight of a heap)
@@ -172,6 +170,7 @@ public:
         if (n > 1) {
             diving(0);
         }
+        index[n] = n;
     }
     // returns index of minchild
     int minchild(int i) const // O(d)
@@ -230,7 +229,7 @@ public:
     }
 };
 
-void LDG_DIJKSTRA_D_HEAP(int* dist, int* up, Graph& graph, size_t n, size_t d, int s) // O(
+void LDG_DIJKSTRA_D_HEAP(int* dist, int* up, Graph& graph, size_t n, size_t d, int s) // O((m+n)log d n)
 {
     int* name = new int[n]; // names of vertexes in graph
     int* index = new int[n]; // numbers of vertexes in d-heap
@@ -243,29 +242,67 @@ void LDG_DIJKSTRA_D_HEAP(int* dist, int* up, Graph& graph, size_t n, size_t d, i
         index[i] = i;
         key[i] = k_inf;
     }
-    dist[s] = key[s] = 0;
+    key[s] = 0;
     DHeapUnsafe heap{ n,d,name, key,index };
     while (!heap.empty())
     {
         int min_name, min_key;
         heap.get_min(min_name, min_key);
+        if (min_name == 2) {
+            int a = 3;
+        }
         heap.del_min();
+        if (min_name == 2) {
+            cout << min_name << " is deleted" << "\n";
+            cout << "after deleting:\n";
+            for (int i = 0; i < n; i++) {
+                cout << heap.name[i] << ": ";
+                cout << heap.key[i] << "\n";
+            }
+        }    
         graph.start_explore_vicinity(min_name); // only name! not index
+        dist[min_name] = min_key;
         ADJ* p = graph.get_ADJ();
         while (p!=nullptr) {
             int j = p->name; // get real name from graph
             int jq = heap.index[j]; // get local index from heap by the name
-            int delta = heap.key[jq] - (min_key + p->weight); // old estimate - (distance to min + edge between vertexes)
-            if (delta > 0) {
-                heap.key[jq] -= delta;
-                dist[j] -= delta;
-                heap.emersion(jq); // because we reduced the key
+            if (min_name == 2) {
+                for (int i = 0; i < n; i++) {
+                    cout << "name[" << i << "]=" << name[i] << "\n";
+                    cout << "index[name[" << i << "]=" << index[name[i]] << "\n";
+                }
+                cout << "j = " << j << "\n";
+                cout << "jq = " << jq << "\n";
+                cout << "key[jq] = " << key[jq] << "\n";
+                cout << "dist[min_name] + p->weight = " << dist[min_name] + p->weight << "\n";
+                cout << "name[jq] = " << name[jq] << "\n";
+                cout << "key[index[name[jq]] = " << key[index[name[jq]]] << "\n";
+            }
+            if (key[jq] > dist[min_name] + p->weight) {
+                key[jq] = dist[min_name]+p->weight;
+                heap.emersion(jq);
                 up[j] = min_name;
+                if (min_name == 2) {
+                    cout << "after emersion:\n";
+                    cout << "up[" << j << "= " << up[j] << "\n";
+                    for (int i = 0; i < n; i++) {
+                        cout << heap.name[i] << ": ";
+                        cout << heap.key[i] << "\n";
+                    }
+                }
             }
             graph.go_next();
             p = graph.get_ADJ();
         }
     }
+    for (int i = 0; i < n; i++) {
+        cout << "dist[" << i << "] = " << dist[i] << "\n";
+        dist[i] = key[name[i]];
+    }
+    for (int i = 0; i < n; i++) {
+        cout << "key[" << i << "] = " << key[heap.name[i]] << "\n";
+    }
+    cout << "\n";
 }
 void create_graph(int n, int m, int q, int r, int** table)
 {
@@ -289,6 +326,7 @@ void create_graph(int n, int m, int q, int r, int** table)
             table[i][j] = 0;
         }
     }
+    table[0][2] = 5;
     for (int j = 0; j < n; j++) {
         if (j != 2) {
             table[2][j] = 1;
