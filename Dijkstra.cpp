@@ -4,12 +4,8 @@
 #include <vector>
 #include <list>
 #include <string>
+#include <chrono>
 using namespace std;
-
-///
-///TO DO:
-/// graphmaker
-/// Debugging
 
 const int k_inf = INT_MAX;
 
@@ -31,11 +27,38 @@ struct ADJ
     ADJ(int _name = 0, int _weight = 0):name(_name),weight(_weight)
     {}
 };
-
+//struct vicinity 
+//{
+//    ADJ* adj;
+//    vicinity* next;
+//    vicinity(int _name, int _weight) {
+//        adj = new ADJ{ _name,_weight };
+//        next = nullptr;
+//    }
+//    ADJ* operator->() 
+//    {
+//        return adj;
+//    }
+//};
+//struct vicinity_iterator
+//{
+//    vicinity** it;
+//    vicinity_iterator(vicinity* v) {
+//        it = &v;
+//    }
+//    void go_next() 
+//    {
+//        it = &((*it)->next);
+//    }
+//    bool end()
+//    {
+//        return(*it) == nullptr;
+//    }
+//};
 class Graph
 {
-    list<ADJ>* graph;
     size_t _size;
+    list<ADJ>* graph; 
     std::list<ADJ>::iterator vicinity_it; // Итератор по окрестности вершины
     size_t pointer; // указатель на номер вершины
 public:
@@ -47,13 +70,10 @@ public:
             list<ADJ> tmp;
             for (int j = 0; j < size; j++)
             {
-                if (weights[i][j] != 0) {
+                if (weights[i][j] != k_inf && weights[i][j] != 0) {
                     tmp.push_back(ADJ{ j,weights[i][j] });
                 }
             }
-           /* if(!tmp.empty()){
-                graph[i] = tmp;
-            }*/
             graph[i] = tmp;
         }
         start_explore_vicinity(0);
@@ -111,14 +131,6 @@ public:
     //key is k_inf if weight is inf and 0 if it is the vertex itself
     DHeapUnsafe(size_t _n, size_t _d, int* _name, int* _key, int* _index) :n(_n), d(_d), name(_name), key(_key), index(_index)
     {
-        /*name = new int[n];
-        key = new int[n];
-        index = new int[n];
-        for (int i = 0; i < n; i++) {
-            key[i] = _key[i];
-            index[i] = i;
-            name[i] = i;
-        }*/
         create_queue();
     }
     // 
@@ -141,7 +153,6 @@ public:
         key[i] = key0; 
         name[i] = name0;
         index[name[i]] = i;
-        int tmp = key[i], tmp1 = name[i], tmp3 = index[name[i]];//////////////////////////////////////////////////////////////
     }
     // explanation is in diving
     void emersion(int i) // in every iteration parent - 0(1), log d n iterations (hight of a heap)
@@ -170,7 +181,7 @@ public:
         if (n > 1) {
             diving(0);
         }
-        index[n] = n;
+        index[name0] = n;
     }
     // returns index of minchild
     int minchild(int i) const // O(d)
@@ -248,107 +259,80 @@ void LDG_DIJKSTRA_D_HEAP(int* dist, int* up, Graph& graph, size_t n, size_t d, i
     {
         int min_name, min_key;
         heap.get_min(min_name, min_key);
-        if (min_name == 2) {
-            int a = 3;
-        }
-        heap.del_min();
-        if (min_name == 2) {
-            cout << min_name << " is deleted" << "\n";
-            cout << "after deleting:\n";
-            for (int i = 0; i < n; i++) {
-                cout << heap.name[i] << ": ";
-                cout << heap.key[i] << "\n";
-            }
-        }    
+        heap.del_min();   
         graph.start_explore_vicinity(min_name); // only name! not index
         dist[min_name] = min_key;
         ADJ* p = graph.get_ADJ();
         while (p!=nullptr) {
             int j = p->name; // get real name from graph
             int jq = heap.index[j]; // get local index from heap by the name
-            if (min_name == 2) {
-                for (int i = 0; i < n; i++) {
-                    cout << "name[" << i << "]=" << name[i] << "\n";
-                    cout << "index[name[" << i << "]=" << index[name[i]] << "\n";
-                }
-                cout << "j = " << j << "\n";
-                cout << "jq = " << jq << "\n";
-                cout << "key[jq] = " << key[jq] << "\n";
-                cout << "dist[min_name] + p->weight = " << dist[min_name] + p->weight << "\n";
-                cout << "name[jq] = " << name[jq] << "\n";
-                cout << "key[index[name[jq]] = " << key[index[name[jq]]] << "\n";
-            }
             if (key[jq] > dist[min_name] + p->weight) {
                 key[jq] = dist[min_name]+p->weight;
                 heap.emersion(jq);
                 up[j] = min_name;
-                if (min_name == 2) {
-                    cout << "after emersion:\n";
-                    cout << "up[" << j << "= " << up[j] << "\n";
-                    for (int i = 0; i < n; i++) {
-                        cout << heap.name[i] << ": ";
-                        cout << heap.key[i] << "\n";
-                    }
-                }
             }
             graph.go_next();
             p = graph.get_ADJ();
         }
     }
+}
+void create_full_graph(int n, int q, int r, int** table) {
+    mt19937 weight(time(0));
     for (int i = 0; i < n; i++) {
-        cout << "dist[" << i << "] = " << dist[i] << "\n";
-        dist[i] = key[name[i]];
+        for (int j = 0; j < n; j++) {
+            table[i][j] = weight() % r + q;
+        }
     }
     for (int i = 0; i < n; i++) {
-        cout << "key[" << i << "] = " << key[heap.name[i]] << "\n";
+        table[i][i] = 0;
     }
-    cout << "\n";
 }
 void create_graph(int n, int m, int q, int r, int** table)
 {
-    //    double q = m / (double(n) * n);
-    //    q *= 1000.0; // to know how many pro mile edges take in table
-    //    int q_int = int(q);
-    //    mt19937 weight(time(0));
-    //    mt19937 edge(time(0));
-    //    for (int i = 0; i < n; i++) {
-    //        for (int j = i+1; j < n; j++) { // j = i+1 because table[i][i] = 0 for any i
-    //
-    //        }
-    //    }
-    //}
-    table[0][0] = 0;
-    for (int j = 1; j < n; j++) {
-        table[0][j] = 100;
+    if (m >=(n*(n-1)/2)) {
+        create_full_graph(n, q, r, table);
     }
-    for (int i = 1; i < n; i++) {
+    double condition = m / (double(n) * n);
+    condition *= 1000.0; // to know how many pro mile edges take in table
+    int c_int = int(condition);
+    mt19937 weight(time(0));
+    mt19937 edge(time(0));
+    for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            table[i][j] = 0;
+            table[i][j] = k_inf;
         }
     }
-    table[0][2] = 5;
-    for (int j = 0; j < n; j++) {
-        if (j != 2) {
-            table[2][j] = 1;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (edge() % 1000 <= c_int) {
+                table[i][j] = weight() % r + q;
+            }
         }
+    }
+    for (int i = 0; i < n; i++) {
+        table[i][i] = 0;
     }
 }
-std::string hello_world()
+void get_args(int& n, int& m, int& q, int& r, int& s, int& d)
 {
-    return std::string("Hello, world!\n");
+    cout << "Input n m q r s d\n";
+    cin >> n >> m >> q >> r >> s >> d;
 }
 // get n = vertex number, m = edges number, q = min weight, r = max weight
 int main(int argc,char* argv[]) 
 {
-    int n, m, q, r;
-   /* n = stoi(argv[1]);
-    m = stoi(argv[2]);
-    q = stoi(argv[3]);
-    r = stoi(argv[4]);*/
-    n = 5;
-    m = 200;
-    q = 1;
-    r = 120;
+    int n, m, q, r, s, d;
+    if (argc < 6) {
+        get_args(n, m, q, r, s, d);
+    }
+    else {
+        n = stoi(argv[1]);
+        m = stoi(argv[2]);
+        q = stoi(argv[3]);
+        r = stoi(argv[4]);
+        s = stoi(argv[5]);
+        d = stoi(argv[6]);
+    }
     int** table;
     table = new int* [n];
     for (int i = 0; i < n; i++) {
@@ -358,14 +342,41 @@ int main(int argc,char* argv[])
     int* dist = new int[n];
     create_graph(n, m, q, r, table);
     Graph g(table,n);
-    int d = 3, s = 0;
+    auto begin = std::chrono::steady_clock::now();
     LDG_DIJKSTRA_D_HEAP(dist, up, g, n, d, s);
-   // std::cout << hello_world();
+    auto end = std::chrono::steady_clock::now();
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    int j = 0;
     for (int i = 0; i < n; i++) {
-        cout << "dist[" << i << "] = " << dist[i] << "; ";
+        if (up[i] == k_inf) {
+            cout << "up[" << i << "] = " << "inf" << " ";
+        }
+        else {
+            cout << "up[" << i << "] = " << up[i] << " ";
+        }
+        if (dist[i] == k_inf) {
+            cout << "dist[" << i << "] = " << "inf";
+            if (j == 4) {
+                j = 0;
+                cout << "\n";
+            }
+            else {
+                j++;
+                cout << " ";
+            }
+        }
+        else {
+            cout << "dist[" << i << "] = " << dist[i];
+            if (j == 4) {
+                j = 0;
+                cout << "\n";
+            }
+            else {
+                j++;
+                cout << " ";
+            }
+        }
     }
-    cout << "\n";
-    for (int i = 0; i < n; i++) {
-        cout << "up[" << i << "] = " << up[i] << "; ";
-    }
+    cout << "\n\nTime: " << elapsed_ms.count() << "\n";
+    return 0;// elapsed_ms.count();
 }
